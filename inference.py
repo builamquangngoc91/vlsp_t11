@@ -24,6 +24,7 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
         if question_type not in ("Multiple choice", "Yes/No") else \
         ('  "answer": "<A|B|C|D>",' if question_type == "Multiple choice" else '  "answer": "<Đúng|Sai>",')
 
+    # Build the JSON template with actual values (avoid placeholders)
     prompt_parts = [
         'Context:',
         f'- id: {sample_id}',
@@ -33,12 +34,28 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
         'Task: Based on the image and your knowledge of traffic laws, answer the question.',
         'Return ONLY a JSON object in this exact schema (no additional text, no explanations):',
         '{',
-        '  "id": "<copy the id above>",',
-        '  "image_id": "<copy the image_id above>",',
-        '  "question": "<copy the question above>",',
-        '  "question_type": "<copy the question_type above>",',
-        '  "choices": {},',
-        answer_schema_line,
+        f'  "id": "{sample_id}",',
+        f'  "image_id": "{image_id}",',
+        f'  "question": "{question}",',
+    ]
+
+    # If Task 2 (question_type provided), include question_type/choices/answer; Task 1 omits them
+    if question_type:
+        prompt_parts.append(f'  "question_type": "{question_type}",')
+        if question_type == "Multiple choice" and isinstance(choices, dict) and choices:
+            ordered_keys = [k for k in ["A", "B", "C", "D"] if k in choices]
+            choices_items = ", ".join([f'"{k}": "{choices[k]}"' for k in ordered_keys])
+            prompt_parts.append(f'  "choices": {{{choices_items}}},')
+            prompt_parts.append('  "answer": "<A|B|C|D>",')
+        elif question_type == "Yes/No":
+            prompt_parts.append('  "choices": {},')
+            prompt_parts.append('  "answer": "<Đúng|Sai>",')
+        else:
+            prompt_parts.append('  "choices": {},')
+            prompt_parts.append(answer_schema_line)
+
+    # Common tail for both tasks
+    prompt_parts += [
         '  "relevant_articles": [',
         '    {"law_id": "<law or standard id>", "article_id": "<article number>"}',
         '  ]',
@@ -47,14 +64,13 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
         '- Respond in Vietnamese.',
         '- Keep "question" and "choices" in Vietnamese; do not translate or paraphrase.',
         '- Output valid JSON only (no markdown, no prose).',
-        '- Use keys exactly: id, image_id, question, answer, relevant_articles.',
+        '- For Task 1 (no question_type): use keys exactly: id, image_id, question, relevant_articles.',
+        '- For Task 2 (has question_type): use keys exactly: id, image_id, question, question_type, choices, answer, relevant_articles.',
         '- Do not output placeholders like <...>; copy actual values from Context.',
         '- Use double quotes for all keys and string values; no trailing commas.',
         '- For each item in relevant_articles, set law_id to the law object\'s "id" and article_id to the nested article object\'s "id" (from the law database).',
         '- Valid law_id values: "QCVN 41:2024/BGTVT" and "36/2024/QH15" only. Do NOT invent other law names.',
         '- article_id must be a string numeric identifier like "22" (not "Article 22")',
-        '- Include "question_type" and "choices" in the JSON. If Multiple choice, set choices to an object with keys A,B,C,D copying texts exactly; otherwise set choices to {}.',
-        '- For Multiple choice, answer must be exactly one of: "A", "B", "C", or "D". For Yes/No, answer must be exactly "Đúng" or "Sai".',
     ]
 
     # Inject question_type and choices guidance when available
