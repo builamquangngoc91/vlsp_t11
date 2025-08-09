@@ -220,10 +220,10 @@ def create_dataset(json_path, image_dir, law_db_path: str = "dataset/db/vlsp2025
     for law in law_data.values():
         for law_item in law:
         # Skip law samples without image to avoid empty image batches
-            if not law.get("image"):
+            if not law_item.get("image"):
                 continue
             user_content = [
-                {"type": "image", "image": f"dataset/db/images.fld/{law['image']}"},
+                {"type": "image", "image": f"dataset/db/images.fld/{law_item['image']}"},
                 {
                     "type": "text",
                     "text": (
