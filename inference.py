@@ -106,7 +106,7 @@ def main():
     FastVisionModel.for_inference(model)
     print("Model loaded successfully.")
 
-    test_json_path = "dataset/test/vlsp_2025_public_test_task1.json"
+    test_json_path = "dataset/test/vlsp_2025_public_test_task2.json"
     image_dir = "dataset/test/public_test_images"
     with open(test_json_path, "r") as f:
         test_data = json.load(f)
@@ -146,7 +146,7 @@ def main():
     
     results = results + "]"
 
-    output_file = "test_results_task1.json"
+    output_file = "submission_task2.json"
     with open(output_file, "w", encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
 
