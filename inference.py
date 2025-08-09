@@ -132,9 +132,17 @@ def main():
             sample.get("question_type"),
             sample.get("choices"),
         )
-        print("answer_json_str: ", answer_json_str)
+        
+
+        # Find the first occurrence of "json" (case-insensitive) in answer_json_str, if any
+        json_pos = answer_json_str.lower().find("json")
+        if json_pos != -1:
+            print(f'Found "json" at position {json_pos} in answer_json_str.')
+        answer_json_str = answer_json_str[json_pos:]
+
+        print("answer_json_str: ```````", answer_json_str, "``````")
+    
         try:
-            
             answer_data = json.loads(answer_json_str)
         except json.JSONDecodeError:
             answer_data = {"answer": "Error decoding JSON", "relevant_articles": []}
