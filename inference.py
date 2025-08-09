@@ -111,7 +111,7 @@ def main():
     with open(test_json_path, "r") as f:
         test_data = json.load(f)
 
-    results = []
+    results = "["
     
     print(f"Running inference on {len(test_data)} test samples...")
     for sample in tqdm(test_data):
@@ -142,25 +142,14 @@ def main():
 
         print("answer_json_str: ```````", answer_json_str, "``````")
     
-        try:
-            answer_data = json.loads(answer_json_str)
-        except json.JSONDecodeError:
-            answer_data = {"answer": "Error decoding JSON", "relevant_articles": []}
-
-        results.append({
-            "id": sample["id"],
-            "image_id": image_id,
-            "question": question,
-            "answer": answer_data.get("answer", ""),
-            "relevant_articles": answer_data.get("relevant_articles", [])
-        })
-        print(f"\nQuestion: {question}")
-        print(f"Answer: {answer_data.get('answer', 'N/A')}")
-        print("-" * 20)
+        results += answer_json_str + ","
+    
+    results = results + "]"
 
     output_file = "test_results_task1.json"
     with open(output_file, "w", encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
+
 
     print(f"\nInference complete. Results saved to {output_file}")
 
