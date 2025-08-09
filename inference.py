@@ -138,7 +138,7 @@ def main():
         json_pos = answer_json_str.lower().find("json")
         if json_pos != -1:
             print(f'Found "json" at position {json_pos} in answer_json_str.')
-        answer_json_str = answer_json_str[json_pos:]
+        answer_json_str = answer_json_str[json_pos + 4:]
 
         print("answer_json_str: ```````", answer_json_str, "``````")
     
