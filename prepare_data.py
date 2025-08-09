@@ -190,6 +190,8 @@ def _load_law_index(law_db_path: str):
                 text_wo_images = re.sub(r"<<IMAGE:\s*(.*?)\s*/IMAGE>>", "", raw_text)
                 # Normalize whitespace
                 cleaned_text = re.sub(r"\n{3,}", "\n\n", text_wo_images).strip()
+                if (law_id, article_id) not in law_index:
+                    law_index[(law_id, article_id)] = []
                 law_index[(law_id, article_id)].append({
                     "article_id": article_id,
                     "law_id": law_id,
