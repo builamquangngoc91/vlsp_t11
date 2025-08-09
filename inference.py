@@ -135,7 +135,7 @@ def main():
         
 
         # Find the first occurrence of "json" (case-insensitive) in answer_json_str, if any
-        json_pos = answer_json_str.lower().find("json")
+        json_pos = answer_json_str.lower().find("```json")
         if json_pos != -1:
             print(f'Found "json" at position {json_pos} in answer_json_str.')
         answer_json_str = answer_json_str[json_pos + 4:]
