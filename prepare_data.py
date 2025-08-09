@@ -185,18 +185,18 @@ def _load_law_index(law_db_path: str):
             raw_text = article.get("text", "")
             # Extract image filename(s) and remove IMAGE/TABLE blocks from text
             image_matches = re.findall(r"<<IMAGE:\s*(.*?)\s*/IMAGE>>", raw_text)
-            image_filename = image_matches[0] if image_matches else ""
-            text_wo_images = re.sub(r"<<IMAGE:\s*(.*?)\s*/IMAGE>>", "", raw_text)
-            text_no_tables = re.sub(r"<<TABLE:[\s\S]*?/TABLE>>", "", text_wo_images)
-            # Normalize whitespace
-            cleaned_text = re.sub(r"\n{3,}", "\n\n", text_no_tables).strip()
-            law_index[(law_id, article_id)] = {
-                "article_id": article_id,
-                "law_id": law_id,
-                "article_title": article.get("title", ""),
-                "text": cleaned_text,
-                "image": image_filename,
-            }
+            for image_match in image_matches:
+                image_filename = image_match
+                text_wo_images = re.sub(r"<<IMAGE:\s*(.*?)\s*/IMAGE>>", "", raw_text)
+                # Normalize whitespace
+                cleaned_text = re.sub(r"\n{3,}", "\n\n", text_wo_images).strip()
+                law_index[(law_id, article_id)].append({
+                    "article_id": article_id,
+                    "law_id": law_id,
+                    "article_title": article.get("title", ""),
+                    "text": cleaned_text,
+                    "image": image_filename,
+                })
     return law_index
 
 
@@ -216,25 +216,26 @@ def create_dataset(json_path, image_dir, law_db_path: str = "dataset/db/vlsp2025
     # For each law and its articles, we'll create a "user" prompt (with image if available) and an "assistant" answer.
     conversations = []
     for law in law_data.values():
+        for law_item in law:
         # Skip law samples without image to avoid empty image batches
-        if not law.get("image"):
-            continue
-        user_content = [
-            {"type": "image", "image": f"dataset/db/images.fld/{law['image']}"},
-            {
-                "type": "text",
-                "text": (
-                    f"Law: {law['law_id']} - Article {law['article_id']}"
-                    + (f": {law['article_title']}" if law.get("article_title") else "")
-                ),
-            },
-        ]
-        conversations.append({
-            "messages": [
-                {"role": "user", "content": user_content},
-                {"role": "assistant", "content": [{"type": "text", "text": law["text"]}]},
+            if not law.get("image"):
+                continue
+            user_content = [
+                {"type": "image", "image": f"dataset/db/images.fld/{law['image']}"},
+                {
+                    "type": "text",
+                    "text": (
+                        f"Law: {law_item['law_id']} - Article {law_item['article_id']}"
+                        + (f": {law_item['article_title']}" if law_item.get("article_title") else "")
+                    ),
+                },
             ]
-        })
+            conversations.append({
+                "messages": [
+                    {"role": "user", "content": user_content},
+                    {"role": "assistant", "content": [{"type": "text", "text": law_item["text"]}]},
+                ]
+            })
 
     # The error is because train_data is a list, not a dict, so we should iterate directly over it.
     for sample in train_data:
