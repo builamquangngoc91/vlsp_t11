@@ -67,7 +67,8 @@ def main():
             eval_steps=500,  # Add evaluation steps
             save_total_limit=3,  # Limit saved checkpoints
             dataloader_num_workers=2,  # Parallel data loading
-            fp16=True,  # Enable mixed precision training
+            bf16=True,  # Enable mixed precision training with bfloat16
+            fp16=False,
         ),
     )
 
