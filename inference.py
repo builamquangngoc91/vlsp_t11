@@ -44,6 +44,7 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
         '- For each item in relevant_articles, set law_id to the law object\'s "id" and article_id to the nested article object\'s "id" (from the law database).',
         '- Valid law_id values: "QCVN 41:2024/BGTVT" and "36/2024/QH15" only. Do NOT invent other law names.',
         '- article_id must be a string numeric identifier like "22" (not "Article 22")',
+        '- IMPORTANT: relevant_articles MUST contain at least one element. Never return an empty array.',
     ]
 
 
@@ -109,12 +110,13 @@ def main():
             sample.get("choices"),
         )
         
-
+        
         # Find the first occurrence of "json" (case-insensitive) in answer_json_str, if any
-        json_pos = answer_json_str.lower().find("```json")
+        json_pos = answer_json_str.lower().find("assistant")
         if json_pos != -1:
             print(f'Found "json" at position {json_pos} in answer_json_str.')
-        answer_json_str = answer_json_str[json_pos + 8:]
+        answer_json_str = answer_json_str[json_pos + 10:]
+        json_pos = answer_json_str.lower().find("```")
 
         print("answer_json_str: ```````", answer_json_str, "``````")
     
