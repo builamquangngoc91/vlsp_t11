@@ -38,7 +38,7 @@ def main():
         loftq_config=None,
     )
 
-    # Set up the trainer
+    # Set up the trainer with improved parameters
     FastVisionModel.for_training(model)
     trainer = SFTTrainer(
         model=model,
@@ -46,23 +46,28 @@ def main():
         data_collator=UnslothVisionDataCollator(model, tokenizer),
         train_dataset=converted_dataset,
         args=SFTConfig(
-            per_device_train_batch_size=2,
-            gradient_accumulation_steps=4,
-            warmup_steps=5,
-            max_steps=1000,
-            learning_rate=2e-4,
-            logging_steps=1,
+            per_device_train_batch_size=1,  # Reduced for memory efficiency
+            gradient_accumulation_steps=8,  # Increased to maintain effective batch size
+            warmup_steps=50,  # Increased warmup for stability
+            max_steps=3000,  # Increased training steps
+            num_train_epochs=3,  # Add epochs for better convergence
+            learning_rate=1e-4,  # Slightly reduced learning rate for stability
+            logging_steps=25,  # Less frequent logging
             optim="adamw_8bit",
             weight_decay=0.01,
-            lr_scheduler_type="linear",
+            lr_scheduler_type="cosine",  # Cosine scheduling for better convergence
             seed=3407,
             output_dir="outputs",
             report_to="none",
             remove_unused_columns=False,
             dataset_text_field="",
             dataset_kwargs={"skip_prepare_dataset": True},
-            # Use max_length supported by SFTConfig
-            max_length=4096,
+            max_length=4096,  # Keep max length for complex prompts
+            save_steps=500,  # Save checkpoints more frequently
+            eval_steps=500,  # Add evaluation steps
+            save_total_limit=3,  # Limit saved checkpoints
+            dataloader_num_workers=2,  # Parallel data loading
+            fp16=True,  # Enable mixed precision training
         ),
     )
 

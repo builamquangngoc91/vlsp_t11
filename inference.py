@@ -116,13 +116,15 @@ def main():
         if json_pos != -1:
             print(f'Found "json" at position {json_pos} in answer_json_str.')
         answer_json_str = answer_json_str[json_pos + 10:]
-        json_pos = answer_json_str.lower().find("```")
 
         print("answer_json_str: ```````", answer_json_str, "``````")
     
         results += answer_json_str + ","
     
     results = results + "]"
+
+    results = json.loads(results)
+    
 
     output_file = "submission_task1.json"
     with open(output_file, "w", encoding='utf-8') as f:

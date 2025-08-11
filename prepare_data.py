@@ -214,23 +214,19 @@ def create_dataset(json_path, image_dir, law_db_path: str = "dataset/db/vlsp2025
     with open(json_path, "r") as f:
         train_data = json.load(f)
 
-    # Convert law_data (law_index) into a conversation format.
-    # We'll create a list of conversation turns, where each turn is a dict with "role" and "content".
-    # For each law and its articles, we'll create a "user" prompt (with image if available) and an "assistant" answer.
     conversations = []
+    
+    # Add law article understanding tasks (multi-task learning)
     for law in law_data.values():
         for law_item in law:
-        # Skip law samples without image to avoid empty image batches
             if not law_item.get("image"):
                 continue
             user_content = [
                 {"type": "image", "image": f"dataset/db/images.fld/{law_item['image']}"},
                 {
                     "type": "text",
-                    "text": (
-                        f"Law: {law_item['law_id']} - Article {law_item['article_id']}"
-                        + (f": {law_item['article_title']}" if law_item.get("article_title") else "")
-                    ),
+                    "text": f"Explain this traffic law sign according to {law_item['law_id']} - Article {law_item['article_id']}"
+                    + (f": {law_item['article_title']}" if law_item.get("article_title") else "")
                 },
             ]
             conversations.append({
@@ -240,43 +236,75 @@ def create_dataset(json_path, image_dir, law_db_path: str = "dataset/db/vlsp2025
                 ]
             })
 
-    # The error is because train_data is a list, not a dict, so we should iterate directly over it.
+    # Add question-answer tasks with law context
     for sample in train_data:
         image_id = sample.get("image_id")
         question = sample.get("question")
         answer = sample.get("answer")
-        relevant_articles = sample.get("relevant_articles")
+        relevant_articles = sample.get("relevant_articles", [])
         question_type = sample.get("question_type", "")
         choices = sample.get("choices")
 
-        # Resolve image path with jpg/png fallback
+        # Resolve image path
         img_path_jpg = os.path.join("dataset/train/train_images", f"{image_id}.jpg")
         img_path_png = os.path.join("dataset/train/train_images", f"{image_id}.png")
         image_path = img_path_jpg if os.path.exists(img_path_jpg) else (img_path_png if os.path.exists(img_path_png) else None)
         if image_path is None:
             continue
 
-        # Build user content: image first to match multimodal expectations
-        user_content = [
-            {"type": "image", "image": image_path},
-            {"type": "text", "text": f"Question: {question}"},
+        # Build law context from relevant articles
+        law_context_lines = []
+        for ra in relevant_articles[:2]:  # Limit to prevent prompt overflow
+            law_id = ra.get("law_id")
+            article_id = str(ra.get("article_id"))
+            law_items = law_data.get((law_id, article_id), [])
+            for law_item in law_items[:1]:  # Take first match
+                title = law_item.get("article_title", "").strip()
+                text_excerpt = _excerpt(law_item.get("text", ""))
+                header = f"- {law_id} - Article {article_id}"
+                if title:
+                    header += f": {title}"
+                law_context_lines.append(header + "\n" + text_excerpt)
+
+        # Build enhanced prompt with law context
+        prompt_parts = [
+            f"Question: {question}",
         ]
         if question_type:
-            user_content.append({"type": "text", "text": f"Question type: {question_type}"})
+            prompt_parts.append(f"Question type: {question_type}")
         if choices:
-            # Render choices compactly
             rendered = ", ".join([f"{k}: {v}" for k, v in choices.items()])
-            user_content.append({"type": "text", "text": f"Choices: {rendered}"})
+            prompt_parts.append(f"Choices: {rendered}")
+        
+        if law_context_lines:
+            prompt_parts.extend([
+                "",
+                "Relevant law excerpts:",
+                "\n".join(law_context_lines),
+                "",
+                "Based on the image and law excerpts above, answer the question."
+            ])
+        else:
+            prompt_parts.append("Based on the image and your knowledge of traffic laws, answer the question.")
 
-        assistant_content = [
-            {"type": "text", "text": f"Answer: {answer}"},
-            {"type": "text", "text": f"Relevant articles: {relevant_articles}"},
+        user_content = [
+            {"type": "image", "image": image_path},
+            {"type": "text", "text": "\n".join(prompt_parts)},
         ]
+
+        # Enhanced assistant response with JSON format
+        output_json = json.dumps({
+            "id": sample.get("id"),
+            "image_id": image_id,
+            "question": question,
+            "answer": answer,
+            "relevant_articles": relevant_articles
+        }, ensure_ascii=False)
 
         conversations.append({
             "messages": [
                 {"role": "user", "content": user_content},
-                {"role": "assistant", "content": assistant_content},
+                {"role": "assistant", "content": [{"type": "text", "text": output_json}]},
             ]
         })
 
