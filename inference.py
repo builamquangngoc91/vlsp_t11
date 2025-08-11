@@ -19,11 +19,6 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
 
     
     # Prepare the prompt
-    # Base prompt
-    answer_schema_line = '  "answer": "<concise answer in Vietnamese>",' \
-        if question_type not in ("Multiple choice", "Yes/No") else \
-        ('  "answer": "<A|B|C|D>",' if question_type == "Multiple choice" else '  "answer": "<Đúng|Sai>",')
-
     prompt_parts = [
         'Context:',
         f'- id: {sample_id}',
@@ -36,9 +31,6 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
         '  "id": "<copy the id above>",',
         '  "image_id": "<copy the image_id above>",',
         '  "question": "<copy the question above>",',
-        '  "question_type": "<copy the question_type above>",',
-        '  "choices": {},',
-        answer_schema_line,
         '  "relevant_articles": [',
         '    {"law_id": "<law or standard id>", "article_id": "<article number>"}',
         '  ]',
@@ -46,30 +38,14 @@ def run_inference(model, tokenizer, sample_id, image_id, image_path, question, q
         'Rules:',
         '- Respond in Vietnamese only.',
         '- Output valid JSON only (no markdown, no prose).',
-        '- Use keys exactly: id, image_id, question, answer, relevant_articles.',
+        '- Use keys exactly: id, image_id, question, relevant_articles.',
         '- Do not output placeholders like <...>; copy actual values from Context.',
         '- Use double quotes for all keys and string values; no trailing commas.',
         '- For each item in relevant_articles, set law_id to the law object\'s "id" and article_id to the nested article object\'s "id" (from the law database).',
         '- Valid law_id values: "QCVN 41:2024/BGTVT" and "36/2024/QH15" only. Do NOT invent other law names.',
         '- article_id must be a string numeric identifier like "22" (not "Article 22")',
-        '- Include "question_type" and "choices" in the JSON. If Multiple choice, set choices to an object with keys A,B,C,D copying texts exactly; otherwise set choices to {}.',
-        '- For Multiple choice, answer must be exactly one of: "A", "B", "C", or "D". For Yes/No, answer must be exactly "Đúng" or "Sai".',
     ]
 
-    # Inject question_type and choices guidance when available
-    if question_type:
-        prompt_parts.append(f"- question_type: {question_type}")
-        if question_type == "Multiple choice" and choices:
-            rendered = "\n".join([f"{k}: {v}" for k, v in choices.items()])
-            prompt_parts += [
-                "- Choices:",
-                rendered,
-                "- For Multiple choice, answer must be exactly one of: \"A\", \"B\", \"C\", or \"D\" (no explanation).",
-            ]
-        elif question_type == "Yes/No":
-            prompt_parts += [
-                "- For Yes/No, answer must be exactly one of: \"Đúng\" or \"Sai\" (no explanation).",
-            ]
 
     prompt = "\n".join(prompt_parts)
     messages = [
@@ -106,7 +82,7 @@ def main():
     FastVisionModel.for_inference(model)
     print("Model loaded successfully.")
 
-    test_json_path = "dataset/test/vlsp_2025_public_test_task2.json"
+    test_json_path = "dataset/test/vlsp_2025_public_test_task1.json"
     image_dir = "dataset/test/public_test_images"
     with open(test_json_path, "r") as f:
         test_data = json.load(f)
@@ -146,7 +122,7 @@ def main():
     
     results = results + "]"
 
-    output_file = "submission_task2.json"
+    output_file = "submission_task1.json"
     with open(output_file, "w", encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
 
