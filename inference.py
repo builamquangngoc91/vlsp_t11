@@ -88,7 +88,7 @@ def main():
     with open(test_json_path, "r") as f:
         test_data = json.load(f)
 
-    results = "["
+    results = []
     
     print(f"Running inference on {len(test_data)} test samples...")
     for sample in tqdm(test_data):
@@ -110,22 +110,15 @@ def main():
             sample.get("choices"),
         )
         
-        
-        # Find the first occurrence of "json" (case-insensitive) in answer_json_str, if any
-        json_pos = answer_json_str.lower().find("assistant")
-        if json_pos != -1:
-            print(f'Found "json" at position {json_pos} in answer_json_str.')
-        answer_json_str = answer_json_str[json_pos + 10:]
-
         print("answer_json_str: ```````", answer_json_str, "``````")
+        
+        try:
+            # Parse individual JSON response
+            answer_json = json.loads(answer_json_str)
+            results.append(answer_json)
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON: {e}")
     
-        results += answer_json_str + ","
-    
-    results = results + "]"
-
-    results = json.loads(results)
-    
-
     output_file = "submission_task1.json"
     with open(output_file, "w", encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
